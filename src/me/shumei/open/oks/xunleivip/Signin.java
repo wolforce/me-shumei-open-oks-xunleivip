@@ -66,7 +66,7 @@ public class Signin extends CommonData {
 			long randNum = new Date().getTime();
 			checkVerifycodeUrl = "http://login.xunlei.com/check?u=" + user + "&cachetime=" + randNum;
 			loginUrl = "http://login.xunlei.com/sec2login?cachetime=" + randNum;
-			signUrl = "http://jifen.xunlei.com/call?c=user&a=sign&userid=";
+			signUrl = "";
 			captchaUrl = "http://verify3.xunlei.com/image?cachetime=" + randNum;
 
 			
@@ -148,8 +148,6 @@ public class Signin extends CommonData {
 				try {
 					//得到当天签到的积分的URL
 					getDayScoreUrl = "http://jifen.xunlei.com/call?c=user&a=getDaySignScore&userid=" + cookies.get("userid");
-					//打卡签到的URL
-					String signUrlFinal = signUrl + cookies.get("userid") + "&rt=" + Math.random();
 					
 					//得到当天签到的积分，并把返回的cookies保存下来以使有权限访问签到链接
 					res = Jsoup.connect(getDayScoreUrl).cookies(cookies).userAgent(UA_ANDROID).timeout(TIME_OUT).ignoreContentType(true).method(Method.GET).execute();
@@ -172,6 +170,27 @@ public class Signin extends CommonData {
 					}
 					else
 					{
+						//打卡签到的URL
+						//String signUrlFinal = "http://jifen.xunlei.com/call?c=user&a=sign&userid=" + cookies.get("userid") + "&rt=" + Math.random();
+						String signUrlFinal = "";
+						String captchaUrl = "http://verify2.xunlei.com/image?cachetime=" + System.currentTimeMillis();
+						if (CaptchaUtil.showCaptcha(captchaUrl, UA_ANDROID, cookies, "迅雷VIP签到", user, "领取积分需要验证码")) {
+						 	if(verifycode.length() > 0) {
+						 		//获取验证码成功，可以用CaptchaUtil.captcha_input继续做其他事了
+								signUrlFinal = "http://jifen.xunlei.com/call?c=user&a=sign&verifycode=" + CaptchaUtil.captcha_input + "&userid=" + cookies.get("userid") + "&rt=" + Math.random();
+						 	} else {
+						 		//用户取消输入验证码
+								resultFlag = "false";
+								resultStr = "用户取消输入验证码，领取积分失败";
+								return;
+						 	}
+						} else {
+							//拉取验证码失败，签到失败
+							resultFlag = "false";
+							resultStr = "拉取领取积分时的验证码失败";
+							return;
+						}
+						
 						//访问签到链接
 						res = Jsoup.connect(signUrlFinal).cookies(cookies).userAgent(UA_ANDROID).timeout(TIME_OUT).referrer(loginUrl).ignoreContentType(true).method(Method.GET).execute();
 						int signScore = new JSONObject(res.body().replace("var json = ", "")).getInt("data");
@@ -194,6 +213,5 @@ public class Signin extends CommonData {
 			}
 		}
 	}
-	
 	
 }
